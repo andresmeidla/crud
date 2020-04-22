@@ -1,5 +1,5 @@
 {
-  "name": "@nestjsx/crud-sequelize",
+  "name": "@andresmeidla/crud-sequelize",
   "description": "NestJs CRUD for RESTful APIs - Sequelize",
   "version": "4.4.6-alpha.1",
   "license": "MIT",
