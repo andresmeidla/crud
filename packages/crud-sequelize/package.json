@@ -1,7 +1,7 @@
 {
   "name": "@andresmeidla/crud-sequelize",
   "description": "NestJs CRUD for RESTful APIs - Sequelize",
-  "version": "4.4.6-alpha.4",
+  "version": "4.4.6-alpha.5",
   "license": "MIT",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -61,5 +61,6 @@
     "@types/umzug": "^2.2.3",
     "sequelize-cli": "^5.5.1",
     "umzug": "^2.3.0"
-  }
+  },
+  "gitHead": "23fec7f563533fd2e7b23a8bd797f0f02dc0e632"
 }
