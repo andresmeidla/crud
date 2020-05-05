@@ -58,9 +58,7 @@
   },
   "devDependencies": {
     "@types/umzug": "^2.2.3",
-    "jest": "^25.4.0",
     "sequelize-cli": "^5.5.1",
     "umzug": "^2.3.0"
-  },
-  "gitHead": "23fec7f563533fd2e7b23a8bd797f0f02dc0e632"
+  }
 }
