@@ -19,7 +19,7 @@ import { DevicesService } from './__fixture__/devices.service';
 import { MigrationHelper } from './migration-helper';
 import { Sequelize } from 'sequelize';
 
-const isMysql = process.env.TYPEORM_CONNECTION === 'mysql';
+const isMysql = process.env.DB === 'mysql';
 
 // tslint:disable:max-classes-per-file no-shadowed-variable
 describe('#crud-sequelize', () => {
@@ -316,7 +316,7 @@ describe('#crud-sequelize', () => {
 
     describe('#findOne', () => {
       it('should return one entity', async () => {
-        const data = await service.findOne(1);
+        const data = await service.findOne({ where: { id: 1 } });
         expect(data.id).toBe(1);
       });
     });

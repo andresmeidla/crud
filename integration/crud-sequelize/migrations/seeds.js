@@ -117,7 +117,7 @@ module.exports = {
         { revision_id: 2, created_at: new Date(), updated_at: new Date() },
         { revision_id: 3, created_at: new Date(), updated_at: new Date() },
         { revision_id: 3, created_at: new Date(), updated_at: new Date() },
-      ]);
+      ], { transaction });
       await transaction.commit();
     }
     catch (err) {
@@ -145,7 +145,7 @@ module.exports = {
         await queryInterface.sequelize.query('ALTER SEQUENCE projects_id_seq RESTART;UPDATE projects SET id = DEFAULT', { transaction, type: QueryTypes.UPDATE });
         await queryInterface.sequelize.query('ALTER SEQUENCE user_profiles_id_seq RESTART;UPDATE user_profiles SET id = DEFAULT', { transaction, type: QueryTypes.UPDATE });
         await queryInterface.sequelize.query('ALTER SEQUENCE companies_id_seq RESTART;UPDATE companies SET id = DEFAULT', { transaction, type: QueryTypes.UPDATE });
-        await queryInterface.sequelize.query('ALTER SEQUENCE notes_id_seq RESTART;UPDATE companies SET id = DEFAULT', { transaction, type: QueryTypes.UPDATE });
+        await queryInterface.sequelize.query('ALTER SEQUENCE notes_id_seq RESTART;UPDATE notes SET id = DEFAULT', { transaction, type: QueryTypes.UPDATE });
       } else if (queryInterface.sequelize.options.dialect === 'mysql') {
         await queryInterface.sequelize.query('ALTER TABLE users AUTO_INCREMENT = 1;', { transaction, type: QueryTypes.UPDATE });
         await queryInterface.sequelize.query('ALTER TABLE licenses AUTO_INCREMENT = 1;', { transaction, type: QueryTypes.UPDATE });
@@ -154,7 +154,7 @@ module.exports = {
         await queryInterface.sequelize.query('ALTER TABLE companies AUTO_INCREMENT = 1;', { transaction, type: QueryTypes.UPDATE });
         await queryInterface.sequelize.query('ALTER TABLE notes AUTO_INCREMENT = 1;', { transaction, type: QueryTypes.UPDATE });
       } else {
-        throw new Error('miograte down not implemented from ' + queryInterface.sequelize.options.dialect);
+        throw new Error('migrate down not implemented from ' + queryInterface.sequelize.options.dialect);
       }
       await transaction.commit();
     }

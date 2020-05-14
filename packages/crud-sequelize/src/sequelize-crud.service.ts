@@ -543,6 +543,7 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
       const associationName = nests.slice(0, nests.length - 1).join('.');
 
       const relation = this.getRelationMetadata(associationName, joinOptions[column]);
+      /* istanbul ignore if */
       if (!relation) {
         this.throwBadRequestException(`Invalid relation name '${relation}'`);
       }
@@ -555,6 +556,7 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
         );
       }
     } else {
+      /* istanbul ignore if */
       if (!this.hasColumn(column)) {
         this.throwBadRequestException(`Invalid column name '${column}'`);
       }
