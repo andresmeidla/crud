@@ -41,6 +41,12 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
   protected entityPrimaryColumns: string[];
   protected entityColumnsHash: Record<string, any> = {};
   protected entityRelationsHash: Map<string, Relation> = new Map();
+  protected sqlInjectionRegEx: RegExp[] = [
+    /(%27)|(\')|(--)|(%23)|(#)/gi,
+    /((%3D)|(=))[^\n]*((%27)|(\')|(--)|(%3B)|(;))/gi,
+    /w*((%27)|(\'))((%6F)|o|(%4F))((%72)|r|(%52))/gi,
+    /((%27)|(\'))union/gi,
+  ];
 
   constructor(protected model: T & typeof Model) {
     super();
@@ -107,13 +113,19 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
     if (returnShallow) {
       return saved as T;
     } else {
-      const primaryParam = this.getPrimaryParam(req.options);
+      const primaryParams = this.getPrimaryParams(req.options);
 
       /* istanbul ignore if */
-      if (!primaryParam && /* istanbul ignore next */ isNil(saved[primaryParam])) {
+      if (
+        !primaryParams.length &&
+        /* istanbul ignore next */ primaryParams.some((p) => isNil(saved[p]))
+      ) {
         return saved as T;
       } else {
-        req.parsed.search = { [primaryParam]: saved[primaryParam] };
+        req.parsed.search = primaryParams.reduce(
+          (acc, p) => ({ ...acc, [p]: saved[p] }),
+          {},
+        );
         return this.getOneOrFail(req);
       }
     }
@@ -200,14 +212,17 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
     if (returnShallow) {
       return replaced as T;
     } else {
-      const primaryParam = this.getPrimaryParam(req.options);
+      const primaryParams = this.getPrimaryParams(req.options);
 
       /* istanbul ignore if */
-      if (!primaryParam) {
+      if (!primaryParams.length) {
         return replaced as T;
       }
 
-      req.parsed.search = { [primaryParam]: replaced[primaryParam] };
+      req.parsed.search = primaryParams.reduce(
+        (acc, p) => ({ ...acc, [p]: replaced[p] }),
+        {},
+      );
       return this.getOneOrFail(req);
     }
   }
@@ -446,6 +461,7 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
   ) {
     const params: any[] = [];
     sorts.forEach((sort) => {
+      this.checkSqlInjection(sort.field);
       this.validateHasColumn(sort.field, joinOptions);
       if (sort.field.indexOf('.') === -1) {
         params.push([sort.field, sort.order]);
@@ -522,10 +538,16 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
       return;
     }
 
+    const columns = isArrayFull(cond.select)
+      ? cond.select.filter((column) =>
+          allowedRelation.allowedColumns.some((allowed) => allowed === column),
+        )
+      : allowedRelation.allowedColumns;
+
     const attributes = [
       ...allowedRelation.primaryColumns,
-      ...(options.persist && options.persist.length ? options.persist : []),
-      ...allowedRelation.allowedColumns,
+      ...(isArrayFull(options.persist) ? options.persist : []),
+      ...columns,
     ];
 
     return {
@@ -906,5 +928,19 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
 
   private transformDto(dto: T) {
     return JSON.parse(JSON.stringify(dto instanceof Model ? classToPlain(dto) : dto));
+  }
+
+  private checkSqlInjection(field: string): string {
+    /* istanbul ignore else */
+    if (this.sqlInjectionRegEx.length) {
+      for (let i = 0; i < this.sqlInjectionRegEx.length; i++) {
+        /* istanbul ignore else */
+        if (this.sqlInjectionRegEx[0].test(field)) {
+          this.throwBadRequestException(`SQL injection detected: "${field}"`);
+        }
+      }
+    }
+
+    return field;
   }
 }
