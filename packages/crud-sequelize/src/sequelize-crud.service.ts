@@ -266,7 +266,6 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
   ): Sequelize.FindOptions {
     // create query builder
     const query: Sequelize.FindOptions = {
-      subQuery: false,
       where: {},
       attributes: [],
       include: [],
