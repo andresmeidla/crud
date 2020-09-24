@@ -53,9 +53,7 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
     this.onInitMapEntityColumns();
   }
 
-  public async findOne<T extends Model>(
-    options: Sequelize.FindOptions,
-  ): Promise<T | null> {
+  public async findOne(options: Sequelize.FindOptions): Promise<T | null> {
     const item = await this.model.findOne(options);
     return item as (T | null);
   }
