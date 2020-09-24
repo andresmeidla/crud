@@ -53,16 +53,22 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
     this.onInitMapEntityColumns();
   }
 
-  public get findOne(): Promise<T> {
-    return this.model.findOne.bind(this.model);
+  public async findOne<T extends Model>(
+    options: Sequelize.FindOptions,
+  ): Promise<T | null> {
+    const item = await this.model.findOne(options);
+    return item as (T | null);
   }
 
-  public get find(): Promise<T[]> {
-    return this.model.findAll.bind(this.model);
+  public async find(options: Sequelize.FindOptions): Promise<T[]> {
+    const items = await this.model.findAll(options);
+    return items as T[];
   }
 
-  public get count(): Promise<{ [key: string]: number }> {
-    return this.model.count.bind(this.model);
+  public async count(
+    options: Sequelize.CountWithOptions,
+  ): Promise<{ [key: string]: number }> {
+    return this.model.count(options);
   }
 
   /**
