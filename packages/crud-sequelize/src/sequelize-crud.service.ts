@@ -53,15 +53,15 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
     this.onInitMapEntityColumns();
   }
 
-  public get findOne() {
+  public get findOne(): Promise<T> {
     return this.model.findOne.bind(this.model);
   }
 
-  public get find() {
+  public get find(): Promise<T[]> {
     return this.model.findAll.bind(this.model);
   }
 
-  public get count() {
+  public get count(): Promise<{ [key: string]: number }> {
     return this.model.count.bind(this.model);
   }
 
@@ -274,7 +274,7 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
       offset: null,
     };
     // get select fields
-    query.attributes = this.getSelect(parsed, options.query);
+    query.attributes = _.uniq(this.getSelect(parsed, options.query));
 
     // set joins
     const joinOptions: JoinOptions = options.query.join || {};
@@ -551,7 +551,7 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
 
     return {
       association: cond.field,
-      attributes: options.select === false ? [] : attributes,
+      attributes: _.uniq(options.select === false ? [] : attributes),
       ...(!options || !options.required ? {} : { required: true }),
       ...(!options || !options.alias ? {} : { as: options.alias }),
     };
