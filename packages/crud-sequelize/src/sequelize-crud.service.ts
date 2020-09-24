@@ -713,6 +713,18 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
     return this.operators[str.replace('$', '')];
   }
 
+  /**
+   * Get primary param name from CrudOptions
+   * @param options
+   */
+  getPrimaryParams(options: CrudRequestOptions): string[] {
+    const params = objKeys(options.params).filter(
+      (n) => options.params[n] && options.params[n].primary,
+    );
+
+    return params.map((p) => options.params[p].field);
+  }
+
   protected mapOperatorsToQuery(cond: QueryFilter) {
     let obj: {};
     let opKey = cond.operator.replace('$', '') as string;
