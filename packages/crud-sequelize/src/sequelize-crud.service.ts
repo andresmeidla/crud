@@ -63,9 +63,7 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
     return items as T[];
   }
 
-  public async count(
-    options: Sequelize.CountWithOptions,
-  ): Promise<{ [key: string]: number }> {
+  public async count(options: Sequelize.CountOptions): Promise<number> {
     return this.model.count(options);
   }
 
