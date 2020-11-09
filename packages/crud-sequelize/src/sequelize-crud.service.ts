@@ -26,7 +26,6 @@ import { oO } from '@zmotivat0r/o0';
 import { Model } from 'sequelize-typescript';
 import * as Sequelize from 'sequelize';
 import * as _ from 'lodash';
-import { isArray } from 'util';
 import { classToPlain } from 'class-transformer';
 
 interface Relation {
@@ -74,17 +73,27 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
   public async getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | T[]> {
     const { parsed, options } = req;
     const query = this.createBuilder(parsed, options);
-
-    if (this.decidePagination(parsed, options)) {
-      const { rows: data, count: total } = await this.model.findAndCountAll(query);
+    const shouldPaginate = this.decidePagination(parsed, options);
+    const res = await this.model.findAll({
+      ...query,
+      ...(shouldPaginate ? { subQuery: undefined } : {}),
+    });
+    if (shouldPaginate) {
+      const count = await this.model.count({
+        ...query,
+        attributes: [],
+        distinct: true,
+        col: 'id',
+      });
+      // const { rows: data, count: total } = await this.model.findAndCountAll(query);
       return this.createPageInfo(
-        data as T[],
-        total,
+        res as T[],
+        count,
         this.getTake(parsed, options.query),
         query.offset,
       );
     }
-    const res = await this.model.findAll(query);
+
     return res as T[];
   }
 
@@ -269,6 +278,7 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
     // create query builder
     const query: Sequelize.FindOptions = {
       where: {},
+      subQuery: false,
       attributes: [],
       include: [],
       order: [],
@@ -314,11 +324,6 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
       }
     }
 
-    if (isArrayFull(joinsArray)) {
-      // convert nested joins
-      query.include = this.convertNestedInclusions(joinsArray);
-    }
-
     // search
     // populate the alias map
     const aliases = {};
@@ -329,7 +334,12 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
         }
       });
     }
-    query.where = this.buildWhere(parsed.search, aliases);
+    query.where = this.buildWhere(parsed.search, aliases, joinsArray);
+
+    if (isArrayFull(joinsArray)) {
+      // convert nested joins
+      query.include = this.convertNestedInclusions(joinsArray);
+    }
 
     /* istanbul ignore else */
     if (many) {
@@ -353,7 +363,6 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
         query.offset = skip;
       }
     }
-    // console.log('query', JSON.stringify(query, null, 2));
     return query;
   }
 
@@ -414,11 +423,14 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
   protected buildWhere(
     search: any,
     aliases: Record<string, string>,
+    joinsArray: Sequelize.IncludeOptions[],
     field = '',
   ): Record<string, any> {
     let where: any;
-    if (isArray(search)) {
-      where = search.map((item) => this.buildWhere(item, aliases));
+    if (Array.isArray(search)) {
+      where = search
+        .map((item) => this.buildWhere(item, aliases, joinsArray))
+        .filter((i) => !!i);
     } else if (isObject(search)) {
       const keys = Object.keys(search);
       const objects = keys.map((key) => {
@@ -426,25 +438,50 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
           const { obj } = this.mapOperatorsToQuery({
             field,
             operator: key as ComparisonOperator,
-            value: this.buildWhere(search[key], aliases, field),
+            value: this.buildWhere(search[key], aliases, joinsArray, field),
           });
           return obj;
         } else if (key === '$and') {
-          return { [Sequelize.Op.and]: this.buildWhere(search[key], aliases) };
+          return {
+            [Sequelize.Op.and]: this.buildWhere(search[key], aliases, joinsArray),
+          };
         } else if (key === '$or') {
-          return { [Sequelize.Op.or]: this.buildWhere(search[key], aliases) };
+          return { [Sequelize.Op.or]: this.buildWhere(search[key], aliases, joinsArray) };
         } else {
           if (key.indexOf('.') > -1) {
             // a key from a joined table
-            const normalized = key
-              .split('.')
-              .map((name) => aliases[name] || name)
-              .join('.');
-            return {
-              [`$${normalized}$`]: this.buildWhere(search[key], aliases, normalized),
-            };
+            let normalized = '';
+            if (key.length > 2 && key[0] === '$' && key[key.length - 1] === '$') {
+              normalized = key.slice(1, key.length - 2);
+            }
+            const tokens = key.split('.').map((name) => aliases[name] || name);
+            const associations = tokens.slice(0, tokens.length - 1);
+            const attribute = tokens[tokens.length - 1];
+            const joinObject = joinsArray.find(
+              (join) => join.association === associations.join('.'),
+            );
+            if (joinObject) {
+              joinObject.where = {
+                [attribute]: this.buildWhere(
+                  search[key],
+                  aliases,
+                  joinsArray,
+                  normalized,
+                ),
+              };
+              return undefined;
+            } else {
+              return {
+                [`$${tokens.join('.')}$`]: this.buildWhere(
+                  search[key],
+                  aliases,
+                  joinsArray,
+                  normalized,
+                ),
+              };
+            }
           }
-          return { [key]: this.buildWhere(search[key], aliases, key) };
+          return { [key]: this.buildWhere(search[key], aliases, joinsArray, key) };
         }
       });
       where = Object.assign({}, ...objects);

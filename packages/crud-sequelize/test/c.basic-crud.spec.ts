@@ -322,7 +322,7 @@ describe('#crud-sequelize', () => {
 
     describe('#find', () => {
       it('should return entities', async () => {
-        const data = await service.find();
+        const data = await service.find({});
         expect(data.length).toBe(10);
       });
     });
@@ -336,7 +336,7 @@ describe('#crud-sequelize', () => {
 
     describe('#count', () => {
       it('should return number', async () => {
-        const data = await service.count();
+        const data = await service.count({});
         expect(typeof data).toBe('number');
       });
     });

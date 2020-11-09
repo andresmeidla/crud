@@ -128,6 +128,9 @@ describe('#crud-sequelize', () => {
           'foo.bar': {
             eager: true,
           },
+          userProjects: {
+            required: false,
+          },
         },
       },
     })
@@ -489,6 +492,46 @@ describe('#crud-sequelize', () => {
             expect(res.status).toBe(200);
             expect(res.body.company).toBeDefined();
             expect(res.body.company.projects).toBeDefined();
+            done();
+          });
+      });
+      it('should return joined entity, 3', (done) => {
+        const query = qb
+          .search({
+            $and: [
+              {
+                'userProjects.project_id': {
+                  $eq: 1,
+                },
+              },
+            ],
+          })
+          .setJoin({ field: 'userProjects' })
+          .setLimit(5)
+          .query();
+        return request(server)
+          .get('/users')
+          .query(query)
+          .end((_, res) => {
+            expect(res.status).toBe(200);
+            expect(res.body[0].userProjects).toBeDefined();
+            done();
+          });
+      });
+      it('should return joined entity, 4', (done) => {
+        const query = qb
+          .setJoin({ field: 'userProjects' })
+          .setLimit(5)
+          .setOffset(0)
+          .query();
+        return request(server)
+          .get('/users')
+          .query(query)
+          .end((_, res) => {
+            expect(res.status).toBe(200);
+            expect(res.body.total).toBe(21);
+            expect(res.body.data.length).toBe(5);
+            expect(res.body.data[0].userProjects).toBeDefined();
             done();
           });
       });
