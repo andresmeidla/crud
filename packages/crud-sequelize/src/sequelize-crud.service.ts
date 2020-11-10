@@ -421,7 +421,7 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
     return convertedInclusions;
   }
 
-  isEmptyWhereConditional(where: any) {
+  private isEmptyWhereConditional(where: any) {
     const yes =
       where === undefined ||
       (Array.isArray(where) && where.length === 0) ||
@@ -788,9 +788,18 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
     return params.map((p) => options.params[p].field);
   }
 
+  private escapeFieldname(field: string) {
+    if (field.includes('.')) {
+      return field;
+    }
+    // add the table to the attribute name
+    return [this.model.name, field].join('.');
+  }
+
   protected mapOperatorsToQuery(cond: QueryFilter) {
     let obj: {};
     let opKey = cond.operator.replace('$', '') as string;
+    const field = this.escapeFieldname(cond.field);
     switch (opKey) {
       case 'eq':
         obj = {
@@ -890,7 +899,7 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
         obj = {
           [Sequelize.Op.and]: [
             Sequelize.where(
-              Sequelize.fn('lower', Sequelize.col(cond.field)),
+              Sequelize.fn('lower', Sequelize.col(field)),
               Sequelize.fn('lower', cond.value),
             ),
           ],
@@ -901,7 +910,7 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
         obj = {
           [Sequelize.Op.and]: [
             Sequelize.where(
-              Sequelize.fn('lower', Sequelize.col(cond.field)),
+              Sequelize.fn('lower', Sequelize.col(field)),
               '!=',
               Sequelize.fn('lower', cond.value),
             ),
@@ -913,7 +922,7 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
         obj = {
           [Sequelize.Op.and]: [
             Sequelize.where(
-              Sequelize.fn('lower', Sequelize.col(cond.field)),
+              Sequelize.fn('lower', Sequelize.col(field)),
               'like',
               Sequelize.fn('lower', `${cond.value}%`),
             ),
@@ -925,7 +934,7 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
         obj = {
           [Sequelize.Op.and]: [
             Sequelize.where(
-              Sequelize.fn('lower', Sequelize.col(cond.field)),
+              Sequelize.fn('lower', Sequelize.col(field)),
               'like',
               Sequelize.fn('lower', `%${cond.value}`),
             ),
@@ -937,7 +946,7 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
         obj = {
           [Sequelize.Op.and]: [
             Sequelize.where(
-              Sequelize.fn('lower', Sequelize.col(cond.field)),
+              Sequelize.fn('lower', Sequelize.col(field)),
               'like',
               Sequelize.fn('lower', `%${cond.value}%`),
             ),
@@ -949,7 +958,7 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
         obj = {
           [Sequelize.Op.and]: [
             Sequelize.where(
-              Sequelize.fn('lower', Sequelize.col(cond.field)),
+              Sequelize.fn('lower', Sequelize.col(field)),
               'not like',
               Sequelize.fn('lower', `%${cond.value}%`),
             ),
@@ -961,7 +970,7 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
         this.checkFilterIsArray(cond);
         obj = {
           [Sequelize.Op.and]: [
-            Sequelize.where(Sequelize.fn('lower', Sequelize.col(cond.field)), 'in', {
+            Sequelize.where(Sequelize.fn('lower', Sequelize.col(field)), 'in', {
               [Sequelize.Op.in]: cond.value.map((value) => value.toLowerCase()),
             }),
           ],
@@ -972,7 +981,7 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
         this.checkFilterIsArray(cond);
         obj = {
           [Sequelize.Op.and]: [
-            Sequelize.where(Sequelize.fn('lower', Sequelize.col(cond.field)), 'not in', {
+            Sequelize.where(Sequelize.fn('lower', Sequelize.col(field)), 'not in', {
               [Sequelize.Op.notIn]: cond.value.map((value) => value.toLowerCase()),
             }),
           ],
@@ -986,7 +995,7 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
         };
         break;
     }
-    return { field: cond.field, obj };
+    return { field, obj };
   }
 
   private checkFilterIsArray(cond: QueryFilter, withLength?: boolean) {
