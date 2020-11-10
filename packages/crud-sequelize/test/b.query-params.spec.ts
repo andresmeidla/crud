@@ -535,6 +535,33 @@ describe('#crud-sequelize', () => {
             done();
           });
       });
+      it('should return joined entity, 5', (done) => {
+        const query = qb
+          .search({
+            $and: [
+              {
+                $or: [
+                  {
+                    'userProjects.project_id': {
+                      $eq: 1,
+                    },
+                  },
+                ],
+              },
+            ],
+          })
+          .setJoin({ field: 'userProjects' })
+          .setLimit(5)
+          .query();
+        return request(server)
+          .get('/users')
+          .query(query)
+          .end((_, res) => {
+            expect(res.status).toBe(200);
+            expect(res.body[0].userProjects).toBeDefined();
+            done();
+          });
+      });
       it('should return joined entity with alias', (done) => {
         const query = qb
           .setFilter({ field: 'pr.id', operator: 'notnull' })

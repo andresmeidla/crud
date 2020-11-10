@@ -335,6 +335,7 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
       });
     }
     query.where = this.buildWhere(parsed.search, aliases, joinsArray);
+    // console.log('WHERE', JSON.stringify(this.conditionalToPrintableObject(query.where), null, 2));
 
     if (isArrayFull(joinsArray)) {
       // convert nested joins
@@ -420,6 +421,16 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
     return convertedInclusions;
   }
 
+  isEmptyWhereConditional(where: any) {
+    const yes =
+      where === undefined ||
+      (Array.isArray(where) && where.length === 0) ||
+      (isObject(where) &&
+        Object.keys(where).length === 0 &&
+        Object.getOwnPropertySymbols(where).length === 0);
+    return yes;
+  }
+
   protected buildWhere(
     search: any,
     aliases: Record<string, string>,
@@ -430,58 +441,71 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
     if (Array.isArray(search)) {
       where = search
         .map((item) => this.buildWhere(item, aliases, joinsArray))
-        .filter((i) => !!i);
+        .filter((where) => !this.isEmptyWhereConditional(where));
     } else if (isObject(search)) {
       const keys = Object.keys(search);
       const objects = keys.map((key) => {
         if (this.isOperator(key)) {
+          where = this.buildWhere(search[key], aliases, joinsArray, field);
+          if (this.isEmptyWhereConditional(where)) {
+            return undefined;
+          }
           const { obj } = this.mapOperatorsToQuery({
             field,
             operator: key as ComparisonOperator,
-            value: this.buildWhere(search[key], aliases, joinsArray, field),
+            value: where,
           });
           return obj;
         } else if (key === '$and') {
+          where = this.buildWhere(search[key], aliases, joinsArray);
+          if (this.isEmptyWhereConditional(where)) {
+            return undefined;
+          }
           return {
-            [Sequelize.Op.and]: this.buildWhere(search[key], aliases, joinsArray),
+            [Sequelize.Op.and]: where,
           };
         } else if (key === '$or') {
-          return { [Sequelize.Op.or]: this.buildWhere(search[key], aliases, joinsArray) };
+          where = this.buildWhere(search[key], aliases, joinsArray);
+          if (this.isEmptyWhereConditional(where)) {
+            return undefined;
+          }
+          return { [Sequelize.Op.or]: where };
         } else {
           if (key.indexOf('.') > -1) {
             // a key from a joined table
-            let normalized = '';
+            let normalized = key;
             if (key.length > 2 && key[0] === '$' && key[key.length - 1] === '$') {
-              normalized = key.slice(1, key.length - 2);
+              normalized = key.slice(1, key.length - 1);
             }
-            const tokens = key.split('.').map((name) => aliases[name] || name);
-            const associations = tokens.slice(0, tokens.length - 1);
+            const tokens = normalized.split('.');
+            const associations = tokens
+              .slice(0, tokens.length - 1)
+              .map((name) => aliases[name] || name);
             const attribute = tokens[tokens.length - 1];
             const joinObject = joinsArray.find(
               (join) => join.association === associations.join('.'),
             );
+            where = this.buildWhere(search[key], aliases, joinsArray, normalized);
+            if (this.isEmptyWhereConditional(where)) {
+              return undefined;
+            }
             if (joinObject) {
               joinObject.where = {
-                [attribute]: this.buildWhere(
-                  search[key],
-                  aliases,
-                  joinsArray,
-                  normalized,
-                ),
+                [attribute]: where,
               };
               return undefined;
             } else {
               return {
-                [`$${tokens.join('.')}$`]: this.buildWhere(
-                  search[key],
-                  aliases,
-                  joinsArray,
-                  normalized,
-                ),
+                [`$${[...associations, attribute].join('.')}$`]: where,
               };
             }
           }
-          return { [key]: this.buildWhere(search[key], aliases, joinsArray, key) };
+
+          where = this.buildWhere(search[key], aliases, joinsArray, key);
+          if (this.isEmptyWhereConditional(where)) {
+            return undefined;
+          }
+          return { [key]: where };
         }
       });
       where = Object.assign({}, ...objects);
