@@ -183,7 +183,7 @@ describe('#crud-sequelize', () => {
     beforeAll(async () => {
       const fixture = await Test.createTestingModule({
         imports: [
-          SequelizeModule.forRoot({ ...config, logging: false }),
+          SequelizeModule.forRoot({ ...config, logging: !!process.env.SQL_LOG }),
           SequelizeModule.forFeature([Company, Project, User, UserProfile, Note]),
         ],
         controllers: [
