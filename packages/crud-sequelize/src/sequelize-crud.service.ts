@@ -482,23 +482,13 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
               .slice(0, tokens.length - 1)
               .map((name) => aliases[name] || name);
             const attribute = tokens[tokens.length - 1];
-            const joinObject = joinsArray.find(
-              (join) => join.association === associations.join('.'),
-            );
             where = this.buildWhere(search[key], aliases, joinsArray, normalized);
             if (this.isEmptyWhereConditional(where)) {
               return undefined;
             }
-            if (joinObject) {
-              joinObject.where = {
-                [attribute]: where,
-              };
-              return undefined;
-            } else {
-              return {
-                [`$${[...associations, attribute].join('.')}$`]: where,
-              };
-            }
+            return {
+              [`$${[...associations, attribute].join('.')}$`]: where,
+            };
           }
 
           where = this.buildWhere(search[key], aliases, joinsArray, key);
