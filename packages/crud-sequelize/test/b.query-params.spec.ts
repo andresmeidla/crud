@@ -696,6 +696,7 @@ describe('#crud-sequelize', () => {
         );
       });
     });*/
+
       it('should sort by nested field, 3 (alternative)', async () => {
         const query = qb
           .setFilter({ field: 'id', operator: 'eq', value: 1 })
