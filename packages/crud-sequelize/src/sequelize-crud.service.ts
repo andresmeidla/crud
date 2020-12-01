@@ -421,6 +421,18 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
     return convertedInclusions;
   }
 
+  isBelongsTo(associationChain: string[]): boolean {
+    let cur: typeof Sequelize.Model = this.model;
+    for (const associationStr of associationChain) {
+      const association = cur.associations[associationStr];
+      if (!association || association.associationType !== 'BelongsTo') {
+        return false;
+      }
+      cur = association.target;
+    }
+    return true;
+  }
+
   private isEmptyWhereConditional(where: any) {
     const yes =
       where === undefined ||
@@ -482,13 +494,23 @@ export class SequelizeCrudService<T extends Model> extends CrudService<T> {
               .slice(0, tokens.length - 1)
               .map((name) => aliases[name] || name);
             const attribute = tokens[tokens.length - 1];
+            const joinObject = joinsArray.find(
+              (join) => join.association === associations.join('.'),
+            );
             where = this.buildWhere(search[key], aliases, joinsArray, normalized);
             if (this.isEmptyWhereConditional(where)) {
               return undefined;
             }
-            return {
-              [`$${[...associations, attribute].join('.')}$`]: where,
-            };
+            if (joinObject && !this.isBelongsTo(associations)) {
+              joinObject.where = {
+                [attribute]: where,
+              };
+              return undefined;
+            } else {
+              return {
+                [`$${[...associations, attribute].join('.')}$`]: where,
+              };
+            }
           }
 
           where = this.buildWhere(search[key], aliases, joinsArray, key);
